@@ -4,13 +4,13 @@
 echo "Enter the new site domain (e.g., test.local):"
 read -r NEW_SITE_DOMAIN
 
-echo "Enter the database name:"
+echo "Enter the new database name:"
 read -r DB_NAME
 
-echo "Enter the database username:"
+echo "Enter the new database username:"
 read -r DB_USER
 
-echo "Enter the database password:"
+echo "Enter the new database password:"
 read -r DB_PASSWORD
 
 # Ask user if they want to install recommended plugins
@@ -163,8 +163,6 @@ fi
 # Optionally, set file permissions for wp-config.php
 # sudo chmod 640 $WP_PATH/wp-config.php
 
-# Step 8: Install and Activate Recommended WordPress Plugins
-
 # Step before installing WordPress
 # Assuming you've already set the variable NEW_SITE_DOMAIN
 WP_DIR="/var/www/$NEW_SITE_DOMAIN/public_html"
@@ -186,20 +184,21 @@ if [[ $INSTALL_PLUGINS =~ ^[Yy]$ ]]; then
 fi
 
 # Generating cleanup script
-echo "Generating cleanup script..."
+echo "Generating cleanup script at $CLEANUP_SCRIPT..."
 cat <<EOF > $CLEANUP_SCRIPT
 #!/bin/bash
 echo "Reversing the installation for $NEW_SITE_DOMAIN..."
 sudo rm -rf /var/www/$NEW_SITE_DOMAIN
 sudo mysql -u root -e "DROP DATABASE ${DB_NAME//./_};"
 sudo rm $VHOST_FILE
-sudo a2dissite $NEW_SITE_DOMAIN.conf
+sudo a2dissite $NEW_SITE_DOMAIN.conf > /dev/null 2>&1
 sudo systemctl reload apache2
 echo "Cleanup complete. Installation reversed."
 EOF
 
-# Making the cleanup script executable
 chmod +x $CLEANUP_SCRIPT
+echo "Cleanup script created at $CLEANUP_SCRIPT."
+
 
 echo "Setup complete! Visit http://$NEW_SITE_DOMAIN to complete the WordPress installation."
 echo "Cleanup script created at $CLEANUP_SCRIPT. Run this script to reverse the installation."
