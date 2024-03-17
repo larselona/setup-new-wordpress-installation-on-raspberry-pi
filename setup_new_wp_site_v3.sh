@@ -146,6 +146,7 @@ install_plugins() {
         local plugins=("wordpress-seo" "wordfence" "w3-total-cache" "contact-form-7" "akismet" "woocommerce" "jetpack" "elementor" "wpforms-lite" "updraftplus" "envato-elements")
         for plugin in "${plugins[@]}"; do
             sudo -u www-data WP_CLI_CACHE_DIR="$WP_CLI_CACHE_DIR" wp plugin install "$plugin" --activate --path="$WP_PATH" || error_exit "Failed to install and activate $plugin."
+            echo "----------PLUGIN INSTALLATION--------------" >> "$OVERVIEW_FILE"
             echo "$plugin plugin installed and activated." >> "$OVERVIEW_FILE"
         done
     fi
@@ -154,28 +155,27 @@ install_plugins() {
 generate_cleanup_script() {
     echo "Generating cleanup script at $CLEANUP_SCRIPT..."
 
-    # Use a temporary file to bypass permission issues, then move it to the desired location
-    TMP_CLEANUP_SCRIPT="/tmp/cleanup_${NEW_SITE_DOMAIN}.sh"
-    
-    cat <<EOF > "$TMP_CLEANUP_SCRIPT"
+    # Use sudo to create the cleanup script directly in the desired location
+    sudo bash -c "cat <<EOF > $CLEANUP_SCRIPT
 #!/bin/bash
-echo "Reversing the installation for $NEW_SITE_DOMAIN..."
-sudo rm -rf "$WP_PATH"
-sudo mysql -u root -e "DROP DATABASE IF EXISTS $DB_NAME;"
-sudo rm "$VHOST_FILE"
-sudo a2dissite "$NEW_SITE_DOMAIN.conf" > /dev/null 2>&1
+echo 'Reversing the installation for $NEW_SITE_DOMAIN...'
+sudo rm -rf $WP_PATH
+sudo mysql -u root -p'YOUR_ROOT_PASSWORD' -e \"DROP DATABASE IF EXISTS $DB_NAME;\"
+sudo mysql -u root -p'YOUR_ROOT_PASSWORD' -e \"DROP USER IF EXISTS '$DB_USER'@'localhost';\"
+sudo mysql -u root -p'YOUR_ROOT_PASSWORD' -e \"FLUSH PRIVILEGES;\"
+sudo rm $VHOST_FILE
+sudo a2dissite $NEW_SITE_DOMAIN.conf > /dev/null 2>&1
 sudo systemctl reload apache2
-echo "Cleanup complete. Installation reversed."
-EOF
+echo 'Cleanup complete. Installation reversed.'
+EOF"
 
-    # Ensure the script has execute permissions
-    chmod +x "$TMP_CLEANUP_SCRIPT"
-
-    # Move the temporary cleanup script to the desired location with elevated permissions
-    sudo mv "$TMP_CLEANUP_SCRIPT" "$CLEANUP_SCRIPT" || error_exit "Failed to create cleanup script."
+    # Ensure the cleanup script has execute permissions
+    sudo chmod +x "$CLEANUP_SCRIPT"
 
     echo "Cleanup script created at $CLEANUP_SCRIPT." >> "$OVERVIEW_FILE"
 }
+
+
 
 
 finalize_installation() {
