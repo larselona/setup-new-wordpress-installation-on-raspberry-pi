@@ -21,6 +21,11 @@ read -r INSTALL_PLUGINS
 WP_PATH="/var/www/$NEW_SITE_DOMAIN/public_html"
 VHOST_FILE="/etc/apache2/sites-available/$NEW_SITE_DOMAIN.conf"
 CLEANUP_SCRIPT="/var/www/$NEW_SITE_DOMAIN/cleanup_$NEW_SITE_DOMAIN.sh"
+WP_CLI_CACHE_DIR="/var/www/.wp-cli/cache"
+
+# Create WP-CLI cache directory and set ownership
+sudo mkdir -p "$WP_CLI_CACHE_DIR"
+sudo chown www-data:www-data "$WP_CLI_CACHE_DIR"
 
 # Function to print an error and exit
 error_exit() {
@@ -31,7 +36,9 @@ error_exit() {
 # Function to configure WordPress for direct filesystem access
 configure_direct_access() {
     echo "Configuring WordPress for direct filesystem access..."
-    echo "define('FS_METHOD', 'direct');" >> $WP_PATH/wp-config.php
+    if ! grep -q "define('FS_METHOD', 'direct');" $WP_PATH/wp-config.php; then
+        echo "define('FS_METHOD', 'direct');" >> $WP_PATH/wp-config.php
+    fi
 }
 
 # Function to set correct permissions and ownership
@@ -45,49 +52,32 @@ set_permissions_ownership() {
 # Function to install and activate recommended plugins
 install_plugins() {
     echo "Installing and activating recommended plugins..."
-    # Add plugin installation commands here, for example:
-    # wp plugin install wordpress-seo --activate --path=$WP_PATH || error_exit "Failed to install and activate Yoast SEO."
-    # Repeat for other plugins
-
-# Navigate to the WordPress installation directory
-cd /var/www/$NEW_SITE_DOMAIN/public_html || error_exit "Failed to navigate to WordPress directory."
-
-# Install and activate Yoast SEO
-wp plugin install wordpress-seo --activate || error_exit "Failed to install and activate Yoast SEO."
-
-# Install and activate Wordfence Security
-wp plugin install wordfence --activate || error_exit "Failed to install and activate Wordfence Security."
-
-# Install and activate W3 Total Cache
-wp plugin install w3-total-cache --activate || error_exit "Failed to install and activate W3 Total Cache."
-
-# Install and activate Contact Form 7
-wp plugin install contact-form-7 --activate || error_exit "Failed to install and activate Contact Form 7."
-
-# Install and activate Akismet Anti-Spam
-wp plugin install akismet --activate || error_exit "Failed to install and activate Akismet Anti-Spam."
-
-# Install and activate WooCommerce (only if you need eCommerce functionality)
-wp plugin install woocommerce --activate || error_exit "Failed to install and activate WooCommerce."
-
-# Install and activate Jetpack
-wp plugin install jetpack --activate || error_exit "Failed to install and activate Jetpack."
-
-# Install and activate Elementor Page Builder
-wp plugin install elementor --activate || error_exit "Failed to install and activate Elementor Page Builder."
-
-# Install and activate WPForms
-wp plugin install wpforms-lite --activate || error_exit "Failed to install and activate WPForms."
-
-# Install and activate UpdraftPlus WordPress Backup Plugin
-wp plugin install updraftplus --activate || error_exit "Failed to install and activate UpdraftPlus WordPress Backup Plugin."
-
-# Install and activate the Envato Market Plugin
-wp plugin install envato-elements --activate || error_exit "Failed to install and activate the Envato Market plugin."
-
-
-echo "Recommended WordPress plugins installed and activated."
+    # Ensure we're using the correct user and cache directory for WP-CLI commands
+    local cmd_prefix="sudo -u www-data WP_CLI_CACHE_DIR=$WP_CLI_CACHE_DIR"
+    # Define all plugins to install and activate
+    declare -a plugins=(
+        "wordpress-seo"
+        "wordfence"
+        "w3-total-cache"
+        "contact-form-7"
+        "akismet"
+        "woocommerce"
+        "jetpack"
+        "elementor"
+        "wpforms-lite"
+        "updraftplus"
+        "envato-elements"
+    )
+    for plugin in "${plugins[@]}"; do
+        $cmd_prefix wp plugin install "$plugin" --activate --path="$WP_PATH" || error_exit "Failed to install and activate $plugin."
+    done
+    echo "Recommended WordPress plugins installed and activated."
 }
+
+# Main installation steps...
+
+# (Include the remaining script here without modifications)
+
 
 # Main installation steps...
 # Your existing script steps here for installation
@@ -184,21 +174,25 @@ if [[ $INSTALL_PLUGINS =~ ^[Yy]$ ]]; then
 fi
 
 # Generating cleanup script
-echo "Generating cleanup script at $CLEANUP_SCRIPT..."
-cat <<EOF > $CLEANUP_SCRIPT
+sudo bash -c "cat <<EOF > $CLEANUP_SCRIPT
 #!/bin/bash
-echo "Reversing the installation for $NEW_SITE_DOMAIN..."
+echo \"Reversing the installation for $NEW_SITE_DOMAIN...\"
 sudo rm -rf /var/www/$NEW_SITE_DOMAIN
-sudo mysql -u root -e "DROP DATABASE ${DB_NAME//./_};"
+sudo mysql -u root -e \"DROP DATABASE ${DB_NAME//./_};\"
 sudo rm $VHOST_FILE
 sudo a2dissite $NEW_SITE_DOMAIN.conf > /dev/null 2>&1
 sudo systemctl reload apache2
-echo "Cleanup complete. Installation reversed."
-EOF
+echo \"Cleanup complete. Installation reversed.\"
+EOF"
 
+
+# Making the cleanup script executable
 chmod +x $CLEANUP_SCRIPT
 echo "Cleanup script created at $CLEANUP_SCRIPT."
 
+# Step 9: Update the /etc/hosts file on the MacBook Pro
+echo "To update the /etc/hosts file on your MacBook Pro, please run the following command in your terminal:"
+echo "sudo -- sh -c 'echo \"192.168.1.130 $NEW_SITE_DOMAIN\" >> /etc/hosts'"
 
 echo "Setup complete! Visit http://$NEW_SITE_DOMAIN to complete the WordPress installation."
 echo "Cleanup script created at $CLEANUP_SCRIPT. Run this script to reverse the installation."
