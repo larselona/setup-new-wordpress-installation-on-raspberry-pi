@@ -73,10 +73,25 @@ create_website_directory() {
 download_and_extract_wordpress() {
     echo "Downloading WordPress..."
     wget https://wordpress.org/latest.tar.gz -O /tmp/wordpress-latest.tar.gz || error_exit "Failed to download WordPress."
+    
+    # Ensure the target directory exists and is empty
+    sudo mkdir -p "$WP_PATH" && sudo rm -rf "$WP_PATH/*"
+    
+    echo "Setting directory permissions before extraction..."
+    # Adjust ownership and permissions more precisely
+    sudo chown "$USER":"$USER" "$WP_PATH" || error_exit "Failed to set directory ownership to $USER."
+    sudo chmod 755 "$WP_PATH" || error_exit "Failed to set directory permissions."
+
     echo "Extracting WordPress..."
     tar -xzf /tmp/wordpress-latest.tar.gz -C "$WP_PATH" --strip-components=1 || error_exit "Failed to extract WordPress."
-    echo "WordPress extracted" >> "$OVERVIEW_FILE"
+    echo "WordPress extracted successfully" >> "$OVERVIEW_FILE"
+    
+    # Reset permissions to ensure the web server can access WordPress
+    sudo chown -R www-data:www-data "$WP_PATH"
 }
+
+
+
 
 configure_apache_virtual_host() {
     echo "Configuring Apache virtual host..."
@@ -138,7 +153,11 @@ install_plugins() {
 
 generate_cleanup_script() {
     echo "Generating cleanup script at $CLEANUP_SCRIPT..."
-    cat <<EOF > "$CLEANUP_SCRIPT"
+
+    # Use a temporary file to bypass permission issues, then move it to the desired location
+    TMP_CLEANUP_SCRIPT="/tmp/cleanup_${NEW_SITE_DOMAIN}.sh"
+    
+    cat <<EOF > "$TMP_CLEANUP_SCRIPT"
 #!/bin/bash
 echo "Reversing the installation for $NEW_SITE_DOMAIN..."
 sudo rm -rf "$WP_PATH"
@@ -148,9 +167,16 @@ sudo a2dissite "$NEW_SITE_DOMAIN.conf" > /dev/null 2>&1
 sudo systemctl reload apache2
 echo "Cleanup complete. Installation reversed."
 EOF
-    chmod +x "$CLEANUP_SCRIPT"
+
+    # Ensure the script has execute permissions
+    chmod +x "$TMP_CLEANUP_SCRIPT"
+
+    # Move the temporary cleanup script to the desired location with elevated permissions
+    sudo mv "$TMP_CLEANUP_SCRIPT" "$CLEANUP_SCRIPT" || error_exit "Failed to create cleanup script."
+
     echo "Cleanup script created at $CLEANUP_SCRIPT." >> "$OVERVIEW_FILE"
 }
+
 
 finalize_installation() {
     echo "To update the /etc/hosts file on your MacBook Pro, please run the following command in your terminal:" >> "$OVERVIEW_FILE"
