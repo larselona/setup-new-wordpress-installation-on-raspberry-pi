@@ -23,6 +23,10 @@ initialize_and_prompt() {
     echo "Do you want to install recommended plugins? [y/N]:"
     read -r INSTALL_PLUGINS
 
+    echo "Do you want to create a staging environment? [y/N]:"
+    read -r CREATE_STAGING
+
+
     echo "Configuration Variables:" >> "$OVERVIEW_FILE"
     echo "Site Domain: $NEW_SITE_DOMAIN" >> "$OVERVIEW_FILE"
     echo "Database Name: $DB_NAME" >> "$OVERVIEW_FILE"
@@ -90,9 +94,6 @@ download_and_extract_wordpress() {
     sudo chown -R www-data:www-data "$WP_PATH"
 }
 
-
-
-
 configure_apache_virtual_host() {
     echo "----------APACHE SETUP--------------" >> "$OVERVIEW_FILE"
     echo "Configuring Apache virtual host..."
@@ -155,31 +156,56 @@ install_plugins() {
     fi
 }
 
-generate_cleanup_script() {
-    echo "Generating cleanup script at $CLEANUP_SCRIPT..."
+create_staging_environment() {
+    local staging_path="${WP_PATH}/staging"
+    local staging_url="${NEW_SITE_DOMAIN}/staging"
 
-    # Use sudo to create the cleanup script directly in the desired location
-    sudo bash -c "cat <<EOF > $CLEANUP_SCRIPT
-#!/bin/bash
-echo 'Reversing the installation for $NEW_SITE_DOMAIN...'
-sudo rm -rf $WP_PATH
-sudo mysql -u root -p'YOUR_ROOT_PASSWORD' -e \"DROP DATABASE IF EXISTS $DB_NAME;\"
-sudo mysql -u root -p'YOUR_ROOT_PASSWORD' -e \"DROP USER IF EXISTS '$DB_USER'@'localhost';\"
-sudo mysql -u root -p'YOUR_ROOT_PASSWORD' -e \"FLUSH PRIVILEGES;\"
-sudo rm $VHOST_FILE
-sudo a2dissite $NEW_SITE_DOMAIN.conf > /dev/null 2>&1
-sudo systemctl reload apache2
-echo 'Cleanup complete. Installation reversed.'
-EOF"
+    echo "Creating staging environment..."
+    sudo mkdir -p "$staging_path" || error_exit "Failed to create staging directory."
+    echo "Staging directory created at $staging_path" >> "$OVERVIEW_FILE"
 
-    # Ensure the cleanup script has execute permissions
-    sudo chmod +x "$CLEANUP_SCRIPT"
+    echo "Copying WordPress files to staging..."
+    sudo cp -a "$WP_PATH/." "$staging_path" || error_exit "Failed to copy WordPress files to staging."
 
-    echo "Cleanup script created at $CLEANUP_SCRIPT." >> "$OVERVIEW_FILE"
+    echo "Configuring staging environment..."
+    sudo -u www-data wp config create --dbname="${DB_NAME}_staging" --dbuser="$DB_USER" --dbpass="$DB_PASSWORD" --path="$staging_path" --skip-check --extra-php <<PHP
+define( 'WP_DEBUG', true );
+PHP
+
+    echo "Installing WordPress for staging..."
+    sudo -u www-data wp core install --url="$staging_url" --title="Staging - $NEW_SITE_DOMAIN" --admin_user="admin" --admin_password="admin_password" --admin_email="admin@example.com" --path="$staging_path" || error_exit "Failed to install WordPress for staging."
+
+    echo "Staging environment setup complete." >> "$OVERVIEW_FILE"
 }
 
+generate_cleanup_script() {
+    echo "Generating cleanup script at $CLEANUP_SCRIPT..."
+    cat <<EOF > "$CLEANUP_SCRIPT"
+#!/bin/bash
+echo "Reversing the installation for $NEW_SITE_DOMAIN..."
+sudo rm -rf "$WP_PATH"
+sudo mysql -u root -e "DROP DATABASE IF EXISTS $DB_NAME;"
+EOF
 
+    # If a staging environment was created, include commands to remove it
+    if [[ $CREATE_STAGING =~ ^[Yy]$ ]]; then
+        cat <<EOF >> "$CLEANUP_SCRIPT"
+echo "Removing staging environment..."
+sudo rm -rf "${WP_PATH}/staging"
+sudo mysql -u root -e "DROP DATABASE IF EXISTS ${DB_NAME}_staging;"
+EOF
+    fi
 
+    cat <<EOF >> "$CLEANUP_SCRIPT"
+sudo rm "$VHOST_FILE"
+sudo a2dissite "$NEW_SITE_DOMAIN.conf" > /dev/null 2>&1
+sudo systemctl reload apache2
+echo "Cleanup complete. Installation reversed."
+EOF
+
+    chmod +x "$CLEANUP_SCRIPT"
+    echo "Cleanup script created at $CLEANUP_SCRIPT." >> "$OVERVIEW_FILE"
+}
 
 finalize_installation() {
     echo "To update the /etc/hosts file on your MacBook Pro, please run the following command in your terminal:" >> "$OVERVIEW_FILE"
@@ -201,5 +227,8 @@ restart_apache
 create_mysql_database_and_user
 install_and_configure_wordpress
 install_plugins
+if [[ $CREATE_STAGING =~ ^[Yy]$ ]]; then
+    create_staging_environment
+fi
 generate_cleanup_script
 finalize_installation
