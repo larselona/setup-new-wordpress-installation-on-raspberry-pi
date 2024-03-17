@@ -13,7 +13,7 @@ This project contains a Bash script for automating the setup of a new WordPress 
 
 ## Prerequisites
 
-- A Linux server (tested on Ubuntu 20.04)
+- A Linux server (tested on Debian GNU/Linux 12 (bookworm) on a raspberry pi)
 - Apache2
 - MySQL or MariaDB
 - PHP (version 7.4 or higher recommended)
@@ -32,7 +32,7 @@ This project contains a Bash script for automating the setup of a new WordPress 
     ```
 3. Make the script executable:
     ```bash
-    chmod +x setup_new_wp_site.sh
+    chmod +x setup_new_wp_site_v3.sh
     ```
 
 ## Usage
@@ -40,8 +40,17 @@ This project contains a Bash script for automating the setup of a new WordPress 
 Run the script and follow the interactive prompts to configure your new WordPress site:
 
 ```bash
-./setup_new_wp_site.sh
+./setup_new_wp_site_v3.sh
 ```
+
+The login to the wp-admin is set to 'admin' with password 'admin_password'
+
+To make the site accessible from a remote computer on your network the /etc/hosts file on the computer must be updated with
+```bash
+"ip address to the remote host" "name of new domain"
+ex 192.168.1.130 new_site.local
+```
+
 ## Options
 
 You will be prompted to enter the site domain, database name, database username, and database password.
@@ -68,8 +77,4 @@ This project is open-sourced under the MIT License. See the LICENSE file for mor
 WordPress.org for the WordPress CMS
 The developers of WP-CLI
 All contributors to this project
-
-
-
-Remember to replace `https://github.com/yourusername/wordpress-setup-script.git` with the actual URL of your GitHub repository. Also, adjust any specific details (like server requirements, tested environments, etc.) to match what your script needs or supports.
 
