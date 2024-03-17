@@ -94,6 +94,7 @@ download_and_extract_wordpress() {
 
 
 configure_apache_virtual_host() {
+    echo "----------APACHE SETUP--------------" >> "$OVERVIEW_FILE"
     echo "Configuring Apache virtual host..."
     echo "<VirtualHost *:80>
         ServerAdmin webmaster@localhost
@@ -118,6 +119,7 @@ restart_apache() {
 
 create_mysql_database_and_user() {
     echo "Creating MySQL database and user..."
+    echo "----------DATABASE SETUP--------------" >> "$OVERVIEW_FILE"
     sudo mysql -u root -e "CREATE DATABASE $DB_NAME DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;" || error_exit "Failed to create database."
     sudo mysql -u root -e "GRANT ALL ON $DB_NAME.* TO '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASSWORD';" || error_exit "Failed to grant database permissions."
     sudo mysql -u root -e "FLUSH PRIVILEGES;" || error_exit "Failed to flush privileges."
@@ -126,6 +128,7 @@ create_mysql_database_and_user() {
 
 install_and_configure_wordpress() {
     echo "Configuring wp-config.php..."
+    echo "----------WORDPRESS INSTALLATION--------------" >> "$OVERVIEW_FILE"
     if [ ! -f "$WP_PATH/wp-config.php" ]; then
         sudo -u www-data wp config create --dbname="$DB_NAME" --dbuser="$DB_USER" --dbpass="$DB_PASSWORD" --path="$WP_PATH" --skip-check --extra-php <<PHP
 define( 'WP_DEBUG', false );
