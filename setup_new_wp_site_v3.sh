@@ -157,53 +157,60 @@ install_plugins() {
 }
 
 create_staging_environment() {
-    local staging_path="${WP_PATH}/staging"
-    local staging_url="${NEW_SITE_DOMAIN}/staging"
+    if [[ $CREATE_STAGING =~ ^[Yy]$ ]]; then
+        STAGING_DOMAIN="${NEW_SITE_DOMAIN}_staging"
+        STAGING_PATH="/var/www/$STAGING_DOMAIN/public_html"
+        STAGING_DB_NAME="${DB_NAME}_staging"
 
-    echo "Creating staging environment..."
-    sudo mkdir -p "$staging_path" || error_exit "Failed to create staging directory."
-    echo "Staging directory created at $staging_path" >> "$OVERVIEW_FILE"
+        echo "Creating staging directory at $STAGING_PATH..."
+        sudo mkdir -p "$STAGING_PATH" || error_exit "Failed to create staging directory."
+        
+        echo "Copying WordPress files to staging..."
+        sudo cp -a "$WP_PATH/." "$STAGING_PATH" || error_exit "Failed to copy WordPress files to staging."
 
-    echo "Copying WordPress files to staging..."
-    sudo cp -a "$WP_PATH/." "$staging_path" || error_exit "Failed to copy WordPress files to staging."
+        echo "Creating staging database..."
+        sudo mysql -u root -e "CREATE DATABASE $STAGING_DB_NAME DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;" || error_exit "Failed to create staging database."
+        sudo mysql -u root -e "GRANT ALL ON $STAGING_DB_NAME.* TO '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASSWORD';" || error_exit "Failed to grant staging database permissions."
+        sudo mysql -u root -e "FLUSH PRIVILEGES;" || error_exit "Failed to flush privileges."
 
-    echo "Configuring staging environment..."
-    sudo -u www-data wp config create --dbname="${DB_NAME}_staging" --dbuser="$DB_USER" --dbpass="$DB_PASSWORD" --path="$staging_path" --skip-check --extra-php <<PHP
-define( 'WP_DEBUG', true );
-PHP
+        # Adjust the wp-config.php for the staging site
+        STAGING_WP_CONFIG="$STAGING_PATH/wp-config.php"
+        sudo cp "$WP_PATH/wp-config.php" "$STAGING_WP_CONFIG" || error_exit "Failed to copy wp-config.php to staging."
+        sudo sed -i "s/define( 'DB_NAME', '$DB_NAME' )/define( 'DB_NAME', '$STAGING_DB_NAME' )/g" "$STAGING_WP_CONFIG"
 
-    echo "Installing WordPress for staging..."
-    sudo -u www-data wp core install --url="$staging_url" --title="Staging - $NEW_SITE_DOMAIN" --admin_user="admin" --admin_password="admin_password" --admin_email="admin@example.com" --path="$staging_path" || error_exit "Failed to install WordPress for staging."
-
-    echo "Staging environment setup complete." >> "$OVERVIEW_FILE"
+        echo "Staging environment created at $STAGING_PATH" >> "$OVERVIEW_FILE"
+    fi
 }
 
 generate_cleanup_script() {
+    # Ensure the directory for the cleanup script exists and has correct permissions
+    echo "Ensuring directory permissions for cleanup script..."
+    sudo mkdir -p "$(dirname "$CLEANUP_SCRIPT")"
+    sudo chown "$USER":"$USER" "$(dirname "$CLEANUP_SCRIPT")"
+    sudo chmod 755 "$(dirname "$CLEANUP_SCRIPT")"
+
     echo "Generating cleanup script at $CLEANUP_SCRIPT..."
-    cat <<EOF > "$CLEANUP_SCRIPT"
-#!/bin/bash
-echo "Reversing the installation for $NEW_SITE_DOMAIN..."
-sudo rm -rf "$WP_PATH"
-sudo mysql -u root -e "DROP DATABASE IF EXISTS $DB_NAME;"
-EOF
-
-    # If a staging environment was created, include commands to remove it
+    # Create the cleanup script file with the right permissions directly
+    {
+    echo "#!/bin/bash"
+    echo "echo \"Reversing the installation for $NEW_SITE_DOMAIN...\""
+    echo "sudo rm -rf \"$WP_PATH\""
+    echo "sudo mysql -u root -e \"DROP DATABASE IF EXISTS $DB_NAME;\""
     if [[ $CREATE_STAGING =~ ^[Yy]$ ]]; then
-        cat <<EOF >> "$CLEANUP_SCRIPT"
-echo "Removing staging environment..."
-sudo rm -rf "${WP_PATH}/staging"
-sudo mysql -u root -e "DROP DATABASE IF EXISTS ${DB_NAME}_staging;"
-EOF
+        echo "echo \"Removing staging environment...\""
+        echo "sudo rm -rf \"/var/www/${STAGING_DOMAIN}\""
+        echo "sudo mysql -u root -e \"DROP DATABASE IF EXISTS $STAGING_DB_NAME;\""
     fi
+    echo "sudo rm \"$VHOST_FILE\""
+    echo "sudo a2dissite \"$NEW_SITE_DOMAIN.conf\" > /dev/null 2>&1"
+    echo "sudo systemctl reload apache2"
+    echo "echo \"Cleanup complete. Installation reversed.\""
+    } | sudo tee "$CLEANUP_SCRIPT" > /dev/null
 
-    cat <<EOF >> "$CLEANUP_SCRIPT"
-sudo rm "$VHOST_FILE"
-sudo a2dissite "$NEW_SITE_DOMAIN.conf" > /dev/null 2>&1
-sudo systemctl reload apache2
-echo "Cleanup complete. Installation reversed."
-EOF
+    # Correct the permissions after creating the script
+    sudo chmod +x "$CLEANUP_SCRIPT"
+    echo "Cleanup script created and permissions set."
 
-    chmod +x "$CLEANUP_SCRIPT"
     echo "Cleanup script created at $CLEANUP_SCRIPT." >> "$OVERVIEW_FILE"
 }
 
