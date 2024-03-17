@@ -1,6 +1,6 @@
 # WordPress Site Setup Script
 
-This project contains a Bash script for automating the setup of a new WordPress site on a Linux server. It configures WordPress with sensible defaults, sets up a new Apache virtual host, creates a MySQL database, and optionally installs a set of recommended plugins. Additionally, it generates a cleanup script for each installation to easily reverse the setup.
+This project contains a Bash script for automating the setup of a new WordPress site on a Linux server. It configures WordPress with sensible defaults, sets up a new Apache virtual host, creates a MySQL database, and optionally installs a set of recommended plugins. Additionally, it now supports the creation of a staging environment alongside the production site and generates a cleanup script for each installation to easily reverse the setup.
 
 ## Features
 
@@ -9,7 +9,8 @@ This project contains a Bash script for automating the setup of a new WordPress 
 - MySQL database creation
 - Optional WordPress plugin installation
 - Direct file system access configuration for WordPress
-- Automatic cleanup script generation
+- Staging environment setup for safe testing
+- Automatic cleanup script generation for easy uninstallation
 
 ## Prerequisites
 
@@ -37,15 +38,15 @@ This project contains a Bash script for automating the setup of a new WordPress 
 
 ## Usage
 
-Run the script and follow the interactive prompts to configure your new WordPress site:
+Run the script and follow the interactive prompts to configure your new WordPress site and optionally a staging environment:
 
 ```bash
 ./setup_new_wp_site_v3.sh
 ```
 
-The login to the wp-admin is set to 'admin' with password 'admin_password'
+The login to the wp-admin is set to 'admin' with the password 'admin_password'.
 
-To make the site accessible from a remote computer on your network the /etc/hosts file on the computer must be updated with
+To make the site accessible from a remote computer on your network, the /etc/hosts file on the computer must be updated with:
 ```bash
 "ip address to the remote host" "name of new domain"
 ex 192.168.1.130 new_site.local
@@ -53,8 +54,7 @@ ex 192.168.1.130 new_site.local
 
 ## Options
 
-You will be prompted to enter the site domain, database name, database username, and database password.
-The script will ask if you want to install recommended plugins. Answer `y` for yes or simply press enter for no.
+You will be prompted to enter the site domain, database name, database username, database password, and whether you want to install recommended plugins and create a staging environment.
 
 ## Cleanup
 
@@ -63,6 +63,8 @@ After testing or if you need to remove the setup, run the generated cleanup scri
 ```bash
 /var/www/your_site_domain/cleanup_your_site_domain.sh
 ```
+
+This script will remove both the production and staging environments if the latter was set up.
 
 ## Contributing
 
@@ -74,7 +76,6 @@ This project is open-sourced under the MIT License. See the LICENSE file for mor
 
 ## Acknowledgements
 
-WordPress.org for the WordPress CMS
-The developers of WP-CLI
-All contributors to this project
-
+- WordPress.org for the WordPress CMS
+- The developers of WP-CLI
+- All contributors to this project
