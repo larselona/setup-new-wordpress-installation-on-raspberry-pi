@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning].
 
 ## [Unreleased]
 
-- /1. **Interactive Menu for Plugin Selection**: Instead of a binary choice for installing recommended plugins, provide an interactive menu where users can select which plugins to install. This allows for greater customization without manually editing the script.
+
 
 -/2. **SSL Configuration**: Automatically configure SSL for the site. This could involve requesting a Let's Encrypt certificate using `certbot` (if available) or providing instructions for configuring SSL manually.
 
@@ -36,7 +36,11 @@ and this project adheres to [Semantic Versioning].
 -/15. **Automated Testing**: Include basic automated tests to verify the successful installation of WordPress, plugins, and themes, and to check that the site is loading correctly.
 
 Implementing these features would significantly enhance the utility of the script, making it a comprehensive tool for WordPress setup and management. Each feature would need to be carefully designed to fit into the workflow and to maintain the script's usability and reliability.
+## [0.0.3] - 2024-03-18
 
+### Added
+
+- **Interactive Menu for Plugin Selection**: Instead of a binary choice for installing recommended plugins, provide an interactive menu where users can select which plugins to install. This allows for greater customization without manually editing the script.
 
 ## [0.0.2] - 2024-03-17
 

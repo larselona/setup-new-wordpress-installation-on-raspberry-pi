@@ -145,16 +145,35 @@ PHP
 }
 
 install_plugins() {
-    if [[ $INSTALL_PLUGINS =~ ^[Yy]$ ]]; then
-        echo "Installing and activating recommended plugins..."
-        local plugins=("wordpress-seo" "wordfence" "w3-total-cache" "contact-form-7" "akismet" "woocommerce" "jetpack" "elementor" "wpforms-lite" "updraftplus" "envato-elements")
-        for plugin in "${plugins[@]}"; do
+    local plugins=("wordpress-seo" "wordfence" "w3-total-cache" "contact-form-7" "akismet" "woocommerce" "jetpack" "elementor" "wpforms-lite" "updraftplus" "envato-elements")
+    local selected_plugins=()
+
+    echo "Please select the plugins you want to install. Type the number of the plugin followed by [ENTER]: (e.g., 1 3 5), and type 'done' when finished."
+
+    select plugin_option in "${plugins[@]}" "Done"; do
+        case $plugin_option in
+            "Done")
+                break
+                ;;
+            *)
+                echo "You have selected $plugin_option"
+                selected_plugins+=("$plugin_option")
+                ;;
+        esac
+    done
+
+    if [ ${#selected_plugins[@]} -eq 0 ]; then
+        echo "No plugins selected for installation."
+    else
+        echo "Installing and activating selected plugins..."
+        for plugin in "${selected_plugins[@]}"; do
             sudo -u www-data WP_CLI_CACHE_DIR="$WP_CLI_CACHE_DIR" wp plugin install "$plugin" --activate --path="$WP_PATH" || error_exit "Failed to install and activate $plugin."
             echo "----------PLUGIN INSTALLATION--------------" >> "$OVERVIEW_FILE"
             echo "$plugin plugin installed and activated." >> "$OVERVIEW_FILE"
         done
     fi
 }
+
 
 create_staging_environment() {
     if [[ $CREATE_STAGING =~ ^[Yy]$ ]]; then
