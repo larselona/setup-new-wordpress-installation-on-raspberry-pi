@@ -145,7 +145,7 @@ PHP
 }
 
 install_plugins() {
-    local plugins=("wordpress-seo" "wordfence" "w3-total-cache" "contact-form-7" "akismet" "woocommerce" "jetpack" "elementor" "wpforms-lite" "updraftplus" "envato-elements")
+    local plugins=("admin-site-enhancements" "updraftplus" "google-site-kit" "envato-elements" "elementor" "wordpress-seo" "wordfence" "w3-total-cache" "contact-form-7" "woocommerce" "jetpack" "wpforms-lite")
     local selected_plugins=()
 
     echo "Please select the plugins you want to install. Type the number of the plugin followed by [ENTER]: (e.g., 1 3 5), and type 'done' when finished."

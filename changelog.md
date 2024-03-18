@@ -41,6 +41,8 @@ Implementing these features would significantly enhance the utility of the scrip
 
 - **Interactive Menu for Plugin Selection**: Instead of a binary choice for installing recommended plugins, provide an interactive menu where users can select which plugins to install. This allows for greater customization without manually editing the script.
 
+- Plugins to the optional install: admin site enhancements, google site kit
+
 ## [0.0.2] - 2024-03-17
 
 ### Added
