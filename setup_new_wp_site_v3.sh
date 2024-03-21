@@ -11,7 +11,7 @@ initialize_and_prompt() {
     date >> "$OVERVIEW_FILE"
     echo "" >> "$OVERVIEW_FILE"
 
-    echo "Enter the new database name:"
+    echo "Enter the new database name:" fh
     read -r DB_NAME
 
     echo "Enter the new database username:"
